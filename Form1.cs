@@ -46,14 +46,15 @@ public partial class Form1 : Form
 
             // Parse da resposta
             dynamic response = JsonConvert.DeserializeObject(responseJson);
-            string link = $"https://google.com.br/{txtValorBase.Text}/{txtLabel.Text}";
-            txtResultado.Text = link;
-            GerarQRCode(link);
 
-         /*   if (response.success == true)
+
+            if (response.success == true)
             {
                 // Exibe o link de pagamento gerado
-                txtResultado.Text = $"Link criado com sucesso!\nLink: {response.data.link}";
+                txtResultado.Text = $"{response.data.link}";
+
+                string link = $"{txtResultado.Text}";
+                GerarQRCode(link);
 
                 // Salva no banco de dados
                 var transacao = new TransacoesCrypto
@@ -77,7 +78,7 @@ public partial class Form1 : Form
             else
             {
                 txtResultado.Text = $"Erro ao criar o link: {response.error}";
-        } */
+        } 
     }
         catch (Exception ex)
         {
