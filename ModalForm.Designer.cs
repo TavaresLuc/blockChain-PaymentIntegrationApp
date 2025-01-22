@@ -111,6 +111,7 @@
             Name = "ModalForm";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "ModalForm";
+            Load += ModalForm_Load;
             ((System.ComponentModel.ISupportInitialize)pictureBox3).EndInit();
             ResumeLayout(false);
             PerformLayout();

@@ -18,4 +18,9 @@ public partial class ModalForm : Form
     {
         MessageBox.Show("Conexão realizada com Sucesso!");
     }
+
+    private void ModalForm_Load(object sender, EventArgs e)
+    {
+
+    }
 }

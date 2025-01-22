@@ -164,8 +164,14 @@ namespace cryptoPayment
 
         private async void btnCriarTransacao_Click(object sender, EventArgs e)
         {
+
+            var modal = new LoadingForm(); // Cria a instância do formulário de carregamento
+
             try
             {
+
+                    modal.Show(); // Exibe o modal
+                    modal.Refresh();
 
                 // Valida o valor inserido
                 if (!double.TryParse(txtValorBase.Text, out double amount) || amount <= 0)
@@ -192,7 +198,6 @@ namespace cryptoPayment
                 string asset = selectedCurrency.Asset;
                 string network = selectedNetwork.Symbol; // Use Symbol como valor de network
 
-
                 if (string.IsNullOrEmpty(asset) || string.IsNullOrEmpty(network))
                 {
                     MessageBox.Show("Certifique-se de selecionar um ativo e uma rede válidos.");
@@ -212,15 +217,21 @@ namespace cryptoPayment
                     var transacao = new TransacoesCrypto
                     {
                         TokenTransaction = response.data.id.ToString(),
-                        Cryptocurrency = response.data.title,
-                        ValCrypto = response.data.amount,
-                        Address = response.data.address,
+                        Cryptocurrency = response.data.asset.title.ToString(),
+                        ValCrypto = double.Parse(response.data.amount.ToString()),
+                        Address = response.data.address.ToString(),
                         DateCreated = DateTime.Now,
                         Status = response.data.status.name.ToString()
                     };
 
+                    using (var context = new AppDbContext())
+                    {
+                        context.Transacoes.Add(transacao); // Adiciona a transação ao DbSet
+                        await context.SaveChangesAsync(); // Salva as alterações no banco
+                    }
 
                     Debug.WriteLine($"Resposta da API: {responseJson}");
+                ///    MessageBox.Show("Venda criada com sucesso!");
                 }
                 else
                 {
@@ -233,7 +244,13 @@ namespace cryptoPayment
                 Debug.WriteLine($"Exceção: {ex.Message}");
                 MessageBox.Show($"Erro ao criar a venda: {ex.Message}");
             }
+            finally
+            {
+
+                modal.Close(); // Fecha o formulário de carregamento
+            }
         }
+
 
 
         private bool IsValidEmail(string email)
