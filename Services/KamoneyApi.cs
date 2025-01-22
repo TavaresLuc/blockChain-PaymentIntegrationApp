@@ -1,68 +1,65 @@
-﻿using System;
-using System.Net.Http;
+﻿
+using System.Diagnostics;
+
 using System.Text;
-using System.Security.Cryptography;
-using System.Threading.Tasks;
+
 using Newtonsoft.Json;
+using cryptoPayment.Models;
+
 
 namespace cryptoPayment.Services
 {
     public class KamoneyApi
     {
-        private readonly string _baseUrl = "https://api2.kamoney.com.br/v2/private/";
-        private readonly string _publicKey;
-        private readonly string _secretKey;
+        public readonly HttpClient HttpClient;
 
-        public KamoneyApi(string publicKey, string secretKey)
+        public KamoneyApi(string bearerToken)
         {
-            _publicKey = publicKey;
-            _secretKey = secretKey;
+            HttpClient = new HttpClient
+            {
+                BaseAddress = new Uri("https://api2.kamoney.com.br/v2/")
+            };
+
+            HttpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearerToken);
+            HttpClient.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
         }
 
-        private string GenerateSignature(string queryString)
+
+
+        public async Task<string> CreateMerchantSale(string asset, string network, double amount, string email)
         {
-            using (var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(_secretKey)))
+            try
             {
-                var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(queryString));
-                string sign = BitConverter.ToString(hash).Replace("-", "").ToLower();
-                Console.WriteLine($"Sign: {sign}");
-                Console.WriteLine("Debugging Signature:");
-                Console.WriteLine($"Query String: {queryString}");
-                Console.WriteLine($"Secret Key: {_secretKey}");
-                Console.WriteLine($"Generated Sign: {sign}");
-                return sign;
+                // Cria o corpo da requisição
+                var body = new
+                {
+                    asset,
+                    network,
+                    amount,
+                    email
+                };
 
-            }
-        }
-
-        private HttpRequestMessage CreateRequest(HttpMethod method, string endpoint, string queryString = "", object body = null)
-        {
-
-            var request = new HttpRequestMessage(method, _baseUrl + endpoint + "?" + queryString);
-
-            if (body != null)
-            {
                 var jsonBody = JsonConvert.SerializeObject(body);
-                request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-            }
 
-            var signature = GenerateSignature(queryString);
-            request.Headers.Add("public", _publicKey);
-            request.Headers.Add("sign", signature);
+                // Logs para depuração
+                Debug.WriteLine("Request Details:");
+                Debug.WriteLine($"URI: {HttpClient.BaseAddress}private/merchant");
+                Debug.WriteLine($"Headers: Authorization={HttpClient.DefaultRequestHeaders.Authorization}");
+                Debug.WriteLine($"Body JSON: {jsonBody}");
 
-            return request;
-        }
+                // Configura o conteúdo da requisição
+                var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json"); // Configura explicitamente o Content-Type
 
+                // Envia a requisição POST
+                var response = await HttpClient.PostAsync("private/merchant", content);
 
-        public async Task<string> CreatePaymentLink(string label, double amount)
-        {
-            var body = new { label, amount };
-            var request = CreateRequest(HttpMethod.Post, "merchant/paymentlink", "", body);
-
-            using (var client = new HttpClient())
-            {
-                var response = await client.SendAsync(request);
+                // Lê o conteúdo da resposta
                 var responseContent = await response.Content.ReadAsStringAsync();
+
+                // Logs da resposta
+                Debug.WriteLine($"Response Status: {response.StatusCode}");
+                Debug.WriteLine($"Response Content: {responseContent}");
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -71,6 +68,64 @@ namespace cryptoPayment.Services
 
                 return responseContent;
             }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Erro: {ex.Message}");
+                throw;
+            }
         }
+
+
+        public async Task<string> GetCurrenciesAsync()
+        {
+            try
+            {
+                var response = await HttpClient.GetAsync("public/currency");
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadAsStringAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Erro ao obter moedas: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<List<NetworkInfo>> GetCurrencyNetworksAsync(string asset)
+        {
+            try
+            {
+                var response = await HttpClient.GetAsync($"public/currency/{asset}");
+                response.EnsureSuccessStatusCode();
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                dynamic jsonResponse = JsonConvert.DeserializeObject(responseContent);
+
+                if (jsonResponse.success == true)
+                {
+                    var networks = new List<NetworkInfo>();
+                    foreach (var network in jsonResponse.data)
+                    {
+                        networks.Add(new NetworkInfo
+                        {
+                            Name = network.name,
+                            Protocol = network.protocol,
+                            Symbol = network.symbol,
+                            Enabled = network.enabled
+                        });
+                    }
+                    return networks;
+                }
+
+                throw new Exception($"Erro ao buscar redes: {jsonResponse.msg}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Erro ao obter redes para {asset}: {ex.Message}");
+                throw;
+            }
+        }
+
+
     }
 }

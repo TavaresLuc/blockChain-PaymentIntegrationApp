@@ -12,23 +12,9 @@ namespace cryptoPayment.Data
         {
             // Substitua pela string de conexão do seu SQL Server
             optionsBuilder
-                .UseSqlServer("Server=localhost\\SQLEXPRESS;Database=BaseSoftshop9.14.1.0;User Id=sa;Password=qaz@123;TrustServerCertificate=True;")
-                .LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information);
+                .UseSqlServer("Server=localhost\\SQLEXPRESS;Database=BaseSoftshop9.14.1.0;User Id=sa;Password=qaz@123;TrustServerCertificate=True;");
 
         }
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            base.OnModelCreating(modelBuilder);
-
-            modelBuilder.Entity<TransacoesCrypto>(entity =>
-            {
-                entity.HasKey(t => t.Id); // Configura como chave primária
-                entity.Property(t => t.Id).ValueGeneratedOnAdd(); // Configura auto-incremento
-                entity.Property(t => t.TokenTransaction).IsRequired();
-            });
-        }
-
 
     }
 }
